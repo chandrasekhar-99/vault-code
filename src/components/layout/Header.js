@@ -4,12 +4,9 @@ export default function Header() {
   return (
     <header className="border-b border-[#30363d] bg-[#0d1117]">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-        <Link
-          href="/"
-          className="text-lg font-bold text-[#e6edf3] sm:text-xl"
-        >
-          Vault<span className="text-[#58a6ff]">Code</span>
-        </Link>
+        <Link href="/problems">
+  Vault<span className="text-[#58a6ff]">Code</span>
+</Link>
 
         <nav className="flex items-center gap-3 text-sm sm:gap-6">
           <Link

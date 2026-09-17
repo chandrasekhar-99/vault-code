@@ -21,10 +21,33 @@ const initialForm = {
   code: "",
 };
 
-export default function ProblemForm() {
+export default function ProblemForm({ problem = null }) {
   const router = useRouter();
 
-  const [form, setForm] = useState(initialForm);
+  const isEditMode = Boolean(problem);
+
+  const [form, setForm] = useState(() => {
+    if (!problem) {
+      return initialForm;
+    }
+
+    return {
+      title: problem.title || "",
+      slug: problem.slug || "",
+      difficulty: problem.difficulty || "Easy",
+      description: problem.description || "",
+      topics: problem.topics?.join(", ") || "",
+      companies: problem.companies?.join(", ") || "",
+      constraints: problem.constraints?.join("\n") || "",
+      approach: problem.approach || "",
+      timeComplexity: problem.timeComplexity || "",
+      spaceComplexity: problem.spaceComplexity || "",
+      language:
+        problem.solutions?.[0]?.language || "JavaScript",
+      code: problem.solutions?.[0]?.code || "",
+    };
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,95 +67,105 @@ export default function ProblemForm() {
   };
 
   const handleTitleChange = (value) => {
-    updateField("title", value);
-
-    if (!form.slug) {
-      updateField("slug", createSlug(value));
-    }
+    setForm((previous) => ({
+      ...previous,
+      title: value,
+      slug: createSlug(value),
+    }));
   };
 
   const handleSubmit = async (event) => {
-  event.preventDefault();
+    event.preventDefault();
 
-  try {
-    setLoading(true);
-    setError("");
+    try {
+      setLoading(true);
+      setError("");
 
-    const title = form.title.trim();
-    const slug = form.slug.trim();
-    const description = form.description.trim();
+      const title = form.title.trim();
+      const slug = form.slug.trim();
+      const description = form.description.trim();
 
-    if (!title) {
-      throw new Error("Title is required");
-    }
+      if (!title) {
+        throw new Error("Title is required");
+      }
 
-    if (!slug) {
-      throw new Error("Slug is required");
-    }
+      if (!slug) {
+        throw new Error("Slug is required");
+      }
 
-    if (!description) {
-      throw new Error("Description is required");
-    }
+      if (!description) {
+        throw new Error("Description is required");
+      }
 
-    const payload = {
-      title,
-      slug,
-      difficulty: form.difficulty,
-      description,
+      const payload = {
+        title,
+        slug,
+        difficulty: form.difficulty,
+        description,
 
-      topics: form.topics
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
+        topics: form.topics
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
 
-      companies: form.companies
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
+        companies: form.companies
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
 
-      constraints: form.constraints
-        .split("\n")
-        .map((item) => item.trim())
-        .filter(Boolean),
+        constraints: form.constraints
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
 
-      approach: form.approach.trim(),
-      timeComplexity: form.timeComplexity.trim(),
-      spaceComplexity: form.spaceComplexity.trim(),
+        approach: form.approach.trim(),
+        timeComplexity: form.timeComplexity.trim(),
+        spaceComplexity: form.spaceComplexity.trim(),
 
-      solutions: [
-        {
-          language: form.language,
-          code: form.code,
+        solutions: [
+          {
+            language: form.language,
+            code: form.code,
+          },
+        ],
+      };
+
+      console.log("Submitting payload:", payload);
+
+      const url = isEditMode
+        ? `/api/problems/${problem._id}`
+        : "/api/problems";
+
+      const method = isEditMode ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
         },
-      ],
-    };
+        body: JSON.stringify(payload),
+      });
 
-    console.log("Submitting payload:", payload);
+      const result = await response.json();
 
-    const response = await fetch("/api/problems", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+            (isEditMode
+              ? "Failed to update problem"
+              : "Failed to create problem")
+        );
+      }
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        result.message || "Failed to create problem"
-      );
+      router.push(`/problems/${result.data.slug}`);
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-
-    router.push(`/problems/${result.data.slug}`);
-  } catch (error) {
-    console.error(error);
-    setError(error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -157,14 +190,18 @@ export default function ProblemForm() {
             }
           />
 
-          <Input
-            label="Slug"
-            value={form.slug}
-            placeholder="two-sum"
-            onChange={(event) =>
-              updateField("slug", event.target.value)
-            }
-          />
+          <div className="w-full">
+            <label className="mb-2 block text-sm font-medium text-[#e6edf3]">
+              Slug
+            </label>
+
+            <input
+              type="text"
+              value={form.slug}
+              readOnly
+              className="w-full cursor-not-allowed rounded-md border border-[#30363d] bg-[#21262d] px-3 py-2.5 text-sm text-[#8b949e] outline-none"
+            />
+          </div>
 
           <Select
             label="Difficulty"
@@ -176,9 +213,18 @@ export default function ProblemForm() {
               )
             }
             options={[
-              { label: "Easy", value: "Easy" },
-              { label: "Medium", value: "Medium" },
-              { label: "Hard", value: "Hard" },
+              {
+                label: "Easy",
+                value: "Easy",
+              },
+              {
+                label: "Medium",
+                value: "Medium",
+              },
+              {
+                label: "Hard",
+                value: "Hard",
+              },
             ]}
           />
 
@@ -241,7 +287,9 @@ export default function ProblemForm() {
             )
           }
           rows={5}
-          placeholder={"2 <= nums.length <= 10000\n-10^9 <= nums[i] <= 10^9"}
+          placeholder={
+            "2 <= nums.length <= 10000\n-10^9 <= nums[i] <= 10^9"
+          }
           className="w-full rounded-md border border-[#30363d] bg-[#0d1117] px-3 py-3 font-mono text-sm text-[#e6edf3] outline-none placeholder:text-[#6e7681] focus:border-[#58a6ff]"
         />
       </section>
@@ -355,7 +403,13 @@ export default function ProblemForm() {
           type="submit"
           disabled={loading}
         >
-          {loading ? "Saving..." : "Save Problem"}
+          {loading
+            ? isEditMode
+              ? "Updating..."
+              : "Saving..."
+            : isEditMode
+            ? "Update Problem"
+            : "Save Problem"}
         </Button>
       </div>
     </form>

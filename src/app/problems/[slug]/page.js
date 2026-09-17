@@ -2,25 +2,19 @@ import Link from "next/link";
 import Header from "@/components/layout/Header";
 import Container from "@/components/layout/Container";
 import ProblemDetails from "@/components/problems/ProblemDetails";
+import connectDB from "@/lib/mongodb";
+import Problem from "@/models/Problem";
 
 async function getProblem(slug) {
-  const response = await fetch(
-    `${
-      process.env.NEXT_PUBLIC_APP_URL ||
-      "http://localhost:3000"
-    }/api/problems/slug/${slug}`,
-    {
-      cache: "no-store",
-    }
-  );
+  await connectDB();
 
-  if (!response.ok) {
+  const problem = await Problem.findOne({ slug }).lean();
+
+  if (!problem) {
     return null;
   }
 
-  const result = await response.json();
-
-  return result.data;
+  return JSON.parse(JSON.stringify(problem));
 }
 
 export default async function ProblemPage({ params }) {
@@ -57,7 +51,7 @@ export default async function ProblemPage({ params }) {
     <>
       <Header />
 
-      <main className="min-h-screen bg-[#0d1117] py-10">
+      <main className="min-h-screen bg-[#0d1117] py-6 sm:py-8 lg:py-10">
         <Container className="max-w-4xl">
           <Link
             href="/problems"
@@ -66,7 +60,7 @@ export default async function ProblemPage({ params }) {
             ← Back to Problems
           </Link>
 
-          <div className="mt-8">
+          <div className="mt-6 sm:mt-8">
             <ProblemDetails problem={problem} />
           </div>
         </Container>

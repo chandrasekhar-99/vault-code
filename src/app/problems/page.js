@@ -10,14 +10,18 @@ export default function ProblemsPage() {
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // const [filters, setFilters] = useState({
+  //   search: "",
+  //   difficulty: "",
+  //   topic: "",
+  //   language: "",
+  //   company: "",
+  //   sort: "newest",
+  // });
+
   const [filters, setFilters] = useState({
-    search: "",
-    difficulty: "",
-    topic: "",
-    language: "",
-    company: "",
-    sort: "newest",
-  });
+  search: "",
+});
 
   const fetchProblems = async () => {
     try {
@@ -75,9 +79,10 @@ export default function ProblemsPage() {
 
     <div className="mt-6 sm:mt-8">
       <ProblemFilter
-        filters={filters}
-        setFilters={setFilters}
-      />
+  filters={filters}
+  setFilters={setFilters}
+  problems={problems}
+/>
     </div>
 
     <div className="mt-6 sm:mt-8">

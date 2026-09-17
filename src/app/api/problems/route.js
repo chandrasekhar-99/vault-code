@@ -8,24 +8,51 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
 
-    const search = searchParams.get("search") || "";
+    const search = searchParams.get("search")?.trim() || "";
     const difficulty = searchParams.get("difficulty") || "";
     const topic = searchParams.get("topic") || "";
     const language = searchParams.get("language") || "";
     const company = searchParams.get("company") || "";
     const sort = searchParams.get("sort") || "newest";
 
-    const page = Number(searchParams.get("page")) || 1;
-    const limit = Number(searchParams.get("limit")) || 10;
+    const page = Math.max(
+      Number(searchParams.get("page")) || 1,
+      1
+    );
+
+    const limit = Math.min(
+      Math.max(
+        Number(searchParams.get("limit")) || 10,
+        1
+      ),
+      50
+    );
 
     const skip = (page - 1) * limit;
 
     const filter = {};
 
+    /*
+     * Partial search
+     *
+     * Example:
+     * "stri"
+     *
+     * Matches:
+     * - String
+     * - Reverse String
+     * - String Compression
+     * - Longest Substring
+     */
     if (search) {
-      filter.$text = {
-        $search: search,
-      };
+      const searchRegex = new RegExp(search, "i");
+
+      filter.$or = [
+        { title: searchRegex },
+        { topics: searchRegex },
+        { companies: searchRegex },
+        { "solutions.language": searchRegex },
+      ];
     }
 
     if (difficulty) {
@@ -44,16 +71,24 @@ export async function GET(request) {
       filter.companies = company;
     }
 
-    let sortOption = {};
+    let sortOption;
 
     if (sort === "oldest") {
-      sortOption = { createdAt: 1 };
+      sortOption = {
+        createdAt: 1,
+      };
     } else if (sort === "title-asc") {
-      sortOption = { title: 1 };
+      sortOption = {
+        title: 1,
+      };
     } else if (sort === "title-desc") {
-      sortOption = { title: -1 };
+      sortOption = {
+        title: -1,
+      };
     } else {
-      sortOption = { createdAt: -1 };
+      sortOption = {
+        createdAt: -1,
+      };
     }
 
     const [problems, total] = await Promise.all([
@@ -77,7 +112,10 @@ export async function GET(request) {
       },
     });
   } catch (error) {
-    console.error("GET /api/problems error:", error);
+    console.error(
+      "GET /api/problems error:",
+      error
+    );
 
     return NextResponse.json(
       {
@@ -113,28 +151,33 @@ export async function POST(request) {
     } = body;
 
     if (
-  !title?.trim() ||
-  !slug?.trim() ||
-  !difficulty?.trim() ||
-  !description?.trim()
-) {
-  return NextResponse.json(
-    {
-      success: false,
-      message:
-        "Title, slug, difficulty and description are required",
-    },
-    { status: 400 }
-  );
-}
+      !title?.trim() ||
+      !slug?.trim() ||
+      !difficulty?.trim() ||
+      !description?.trim()
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Title, slug, difficulty and description are required",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
-    const existingProblem = await Problem.findOne({ slug });
+    const existingProblem = await Problem.findOne({
+      slug,
+    });
 
     if (existingProblem) {
       return NextResponse.json(
         {
           success: false,
-          message: "A problem with this slug already exists",
+          message:
+            "A problem with this slug already exists",
         },
         {
           status: 409,
@@ -168,7 +211,10 @@ export async function POST(request) {
       }
     );
   } catch (error) {
-    console.error("POST /api/problems error:", error);
+    console.error(
+      "POST /api/problems error:",
+      error
+    );
 
     return NextResponse.json(
       {
